@@ -1,30 +1,43 @@
-# FastAPI & Server
+# ======================================
+# FASTAPI + SERVER
+# ======================================
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
 python-dotenv==1.0.0
+fastapi-cors==0.0.6
 
-# Pydantic
+# ======================================
+# PYDANTIC
+# ======================================
 pydantic==2.5.0
 
-# Google AI (Gemini)
+# ======================================
+# GOOGLE AI (Gemini)
+# ======================================
 google-generativeai==0.3.1
 
-# Google APIs (Calendar, Gmail)
+# ======================================
+# GOOGLE APIS (Calendar, Gmail)
+# ======================================
 google-auth==2.23.4
 google-auth-oauthlib==1.1.0
 google-auth-httplib2==0.1.1
 google-api-python-client==2.108.0
 
-# Web Scraping
+# ======================================
+# GROQ (LLM API)
+# ======================================
+groq==0.5.0
+
+# ======================================
+# WEB SCRAPING
+# ======================================
 requests==2.31.0
 beautifulsoup4==4.12.2
 lxml==4.9.3
 
-# Selenium (Optional - for advanced browser features)
+# ======================================
+# SELENIUM (Optional - for automation tasks)
+# ======================================
 selenium==4.16.0
 webdriver-manager==4.0.1
-beautifulsoup4==4.12.2
-requests==2.31.0
-
-# CORS
-fastapi-cors==0.0.6
