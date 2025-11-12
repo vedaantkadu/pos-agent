@@ -1,0 +1,81 @@
+# ======================================
+# PYTHON BACKEND IGNORE
+# ======================================
+
+# Byte-compiled / optimized files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+venv/
+env/
+.venv/
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Logs and caches
+*.log
+*.out
+*.bak
+*.tmp
+*.swp
+.cache/
+.pytest_cache/
+
+# Jupyter and other temp files
+.ipynb_checkpoints
+.DS_Store
+
+# Credentials / sensitive data
+.env
+*.pickle
+*_token.json
+*_token.pickle
+*_data.json
+
+# ======================================
+# FRONTEND (React + Vite) IGNORE
+# ======================================
+
+# Node modules
+frontend/node_modules/
+node_modules/
+
+# Build output
+frontend/dist/
+dist/
+
+# Local environment variables
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+
+# IDE / Editor files
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# System files
+Thumbs.db
+.DS_Store
+
+# ======================================
+# MISC
+# ======================================
+
+# Backup files
+*.bak
+*.orig
+*.save
+
+# OS-specific
+ehthumbs.db
+Desktop.ini
