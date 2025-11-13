@@ -1,5 +1,5 @@
 """
-Present Operating System (POS) - Parent Agent - Groq Integration
+Present Operating System (POS) - Parent Agent - FIXED EMAIL EXTRACTION
 """
 
 import os
@@ -79,7 +79,7 @@ Provide JSON with:
 2. entities: {{
    "dates": ["extracted dates"],
    "times": ["extracted times"],
-   "emails": ["email addresses"],
+   "emails": ["email addresses found in the text"],
    "names": ["person names"],
    "topics": ["main topics"]
 }}
@@ -90,18 +90,28 @@ Provide JSON with:
    "description": "details",
    "due_date": "YYYY-MM-DD",
    "query": "search/chat query",
+   "to_email": "recipient email address",
+   "subject": "email subject",
+   "body": "email body text",
    "contact_name": "person name for contacts",
    "action": "list/add/search for contacts"
 }}
 
-Examples:
-- "Search for Python tutorials" → intent_type: "search", params: {{"query": "Python tutorials"}}
-- "What's the weather like?" → intent_type: "chat", params: {{"query": "weather question"}}
-- "Tell me about AI" → intent_type: "chat", params: {{"query": "Tell me about AI"}}
-- "Add contact John Smith" → intent_type: "contact", params: {{contact_name: "John Smith", action: "add"}}
-- "Show all my contacts" → intent_type: "contact_list", params: {{action: "list"}}
+CRITICAL: For emails:
+- Extract the email address and put it in BOTH entities.emails AND params.to_email
+- Extract the message content and put it in params.body
+- Generate an appropriate subject line
 
-Use "search" for explicit web searches, "chat" for conversational queries.
+Examples:
+- "send email to john@example.com asking about the project" → 
+  intent_type: "email", 
+  entities: {{"emails": ["john@example.com"]}},
+  params: {{"to_email": "john@example.com", "subject": "Project inquiry", "body": "asking about the project"}}
+
+- "email vedant@gmail.com tell him to give my money back" →
+  intent_type: "email",
+  entities: {{"emails": ["vedant@gmail.com"]}},
+  params: {{"to_email": "vedant@gmail.com", "subject": "Payment Request", "body": "tell him to give my money back"}}
 
 Respond ONLY with valid JSON."""
 
@@ -117,6 +127,15 @@ Respond ONLY with valid JSON."""
             parsed = json.loads(result_text)
             parsed["original_input"] = user_input
             
+            # FORCE email extraction with regex as backup
+            if parsed.get("intent_type") == "email":
+                email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b'
+                emails = re.findall(email_pattern, user_input)
+                if emails and not parsed.get("params", {}).get("to_email"):
+                    parsed.setdefault("params", {})["to_email"] = emails[0]
+                    parsed.setdefault("entities", {})["emails"] = emails
+                    logger.info(f"🔧 Backup regex extracted email: {emails[0]}")
+            
             return parsed
             
         except Exception as e:
@@ -124,24 +143,27 @@ Respond ONLY with valid JSON."""
             return self._fallback_intent_analysis(user_input)
     
     def _fallback_intent_analysis(self, user_input: str) -> Dict:
-        """Enhanced fallback with better parsing"""
+        """Enhanced fallback with better email parsing"""
         lower_input = user_input.lower()
         
-        intent_type = "chat"  # Default to chat instead of general
+        intent_type = "chat"
         avatar = "Producer"
         priority = "P3"
         params = {}
+        entities = {}
         
-        # Extract emails
-        email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+        # STEP 1: Extract emails FIRST - this is critical
+        email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b'
         emails = re.findall(email_pattern, user_input)
+        
         if emails:
             params["to_email"] = emails[0]
+            entities["emails"] = emails
+            logger.info(f"📧 Extracted email: {emails[0]}")
         
-        # Intent detection with improved search/chat distinction
+        # STEP 2: Detect intent
         if any(word in lower_input for word in ["search for", "find information about", "look up", "google"]):
             intent_type = "search"
-            # Extract search query
             query = lower_input
             for trigger in ["search for", "find information about", "look up", "google", "search"]:
                 if trigger in query:
@@ -159,15 +181,30 @@ Respond ONLY with valid JSON."""
             if name_match:
                 params["contact_name"] = name_match.group(1)
         
-        elif any(word in lower_input for word in ["email", "mail", "send", "write to"]):
+        elif any(word in lower_input for word in ["email", "mail", "send", "write to", "message"]) or emails:
+            # If we detected an email address OR email keywords, it's an email intent
             intent_type = "email"
-            if "asking" in lower_input or "ask" in lower_input:
-                after_ask = lower_input.split("ask")[-1].strip()
-                params["body"] = after_ask
-                params["subject"] = "Quick question"
-            else:
-                params["body"] = user_input
-                params["subject"] = "Message from Martin"
+            
+            # Extract body content
+            body_triggers = ["tell him", "tell her", "tell them", "asking", "ask", "about", "regarding"]
+            body = user_input
+            
+            # Try to extract the message part
+            for trigger in ["tell him", "tell her", "tell them", "asking", "ask him", "ask her"]:
+                if trigger in lower_input:
+                    body = lower_input.split(trigger, 1)[-1].strip()
+                    break
+            
+            # If no trigger found, use everything after the email
+            if emails and emails[0] in user_input:
+                parts = user_input.split(emails[0], 1)
+                if len(parts) > 1:
+                    body = parts[1].strip()
+            
+            params["body"] = body if body != user_input else user_input
+            params["subject"] = "Message from Present OS"
+            
+            logger.info(f"📧 Email intent - To: {params.get('to_email')}, Body: {params.get('body')[:50]}...")
         
         elif any(word in lower_input for word in ["task", "todo", "remind", "create task"]):
             intent_type = "task"
@@ -190,7 +227,6 @@ Respond ONLY with valid JSON."""
             intent_type = "report"
         
         else:
-            # Default to chat for conversational queries
             intent_type = "chat"
             params["query"] = user_input
         
@@ -202,7 +238,7 @@ Respond ONLY with valid JSON."""
         
         return {
             "intent_type": intent_type,
-            "entities": {"emails": emails} if emails else {},
+            "entities": entities,
             "priority": priority,
             "avatar": avatar,
             "params": params,
@@ -222,8 +258,8 @@ Respond ONLY with valid JSON."""
             "schedule": ["calendar", "xp"],
             "email": ["email"],
             "weather": ["weather"],
-            "search": ["groq"],  # Use Groq for web search queries
-            "chat": ["groq"],    # Use Groq for conversational AI
+            "search": ["groq"],
+            "chat": ["groq"],
             "contact": ["contact"],
             "contact_list": ["contact"],
             "report": ["report", "task", "xp"],
@@ -234,7 +270,6 @@ Respond ONLY with valid JSON."""
         if intent_type in agent_map:
             agents_to_activate.extend(agent_map[intent_type])
         else:
-            # Default to Groq for unknown intents (conversational fallback)
             agents_to_activate.append("groq")
         
         # Remove duplicates
@@ -246,7 +281,7 @@ Respond ONLY with valid JSON."""
                 unique_agents.append(agent)
         
         if not unique_agents:
-            unique_agents = ["groq"]  # Default to Groq instead of task
+            unique_agents = ["groq"]
         
         logger.info(f"Routing to agents: {unique_agents}")
         return unique_agents
@@ -258,6 +293,7 @@ Respond ONLY with valid JSON."""
             logger.info(f"🎯 Processing: {user_input}")
             intent = self.analyze_intent(user_input)
             logger.info(f"🧠 Intent: {intent.get('intent_type')}")
+            logger.info(f"📋 Params: {intent.get('params')}")
             
             agents_to_activate = self.route_to_agents(intent)
             logger.info(f"🤖 Activating: {', '.join(agents_to_activate)}")
@@ -290,7 +326,7 @@ Respond ONLY with valid JSON."""
             }
     
     async def _execute_agent(self, agent_name: str, intent: Dict, agents_to_activate: List[str]) -> Dict:
-        """ACTUALLY EXECUTE AGENTS - WITH GROQ INTEGRATION"""
+        """ACTUALLY EXECUTE AGENTS - FIXED EMAIL HANDLING"""
         
         try:
             agent = self.agents[agent_name]
@@ -324,22 +360,30 @@ Respond ONLY with valid JSON."""
                 
                 return {"agent": "calendar", "action": "create", "result": result}
             
-            # ========== EMAIL AGENT ==========
+            # ========== EMAIL AGENT - FIXED ==========
             elif agent_name == "email":
                 to_email = params.get("to_email")
                 
+                # DEBUGGING
+                logger.info(f"📧 Email Agent - Params: {params}")
+                logger.info(f"📧 Email Agent - to_email: {to_email}")
+                
                 if not to_email:
-                    logger.warning("⚠️ No recipient email found")
+                    logger.error("⚠️ No recipient email found in params")
+                    logger.error(f"⚠️ Full intent: {intent}")
                     return {
                         "agent": "email",
                         "action": "error",
-                        "result": {"error": "No recipient email specified"}
+                        "result": {"error": "No recipient email specified", "success": False}
                     }
                 
-                subject = params.get("subject", "Message from Martin")
+                subject = params.get("subject", "Message from Present OS")
                 body = params.get("body", original_text)
                 
-                logger.info(f"📧 Sending email to {to_email}")
+                logger.info(f"📧 Sending email:")
+                logger.info(f"   To: {to_email}")
+                logger.info(f"   Subject: {subject}")
+                logger.info(f"   Body: {body[:100]}...")
                 
                 result = await agent.send_email(
                     to=to_email,
@@ -351,11 +395,9 @@ Respond ONLY with valid JSON."""
             
             # ========== GROQ AGENT - SEARCH & CHAT ==========
             elif agent_name == "groq":
-                # Get current context for better responses
                 system_context = await self.fetch_context()
                 
                 if intent_type == "search":
-                    # For search queries, use a specific prompt
                     query = params.get("query") or original_text
                     search_prompt = f"Search and provide detailed information about: {query}"
                     
@@ -368,7 +410,6 @@ Respond ONLY with valid JSON."""
                         "result": result
                     }
                 else:
-                    # For regular chat
                     logger.info(f"💬 Groq chat: {original_text[:50]}...")
                     result = await agent.chat(original_text, system_context)
                     
@@ -504,7 +545,6 @@ Respond ONLY with valid JSON."""
         elif intent_type in ["search", "chat"]:
             groq_result = next((r["result"] for r in results if r["agent"] == "groq"), {})
             if groq_result.get("success"):
-                # Return the AI's response directly
                 return groq_result.get("response", "✅ Query processed!")
             return "⚠️ AI service unavailable - check your Groq API key"
         
@@ -549,7 +589,6 @@ Respond ONLY with valid JSON."""
             "weather": "Clear"
         }
         
-        # Get task count
         if "task" in self.agents:
             try:
                 tasks = await self.agents["task"].get_tasks()
@@ -557,7 +596,6 @@ Respond ONLY with valid JSON."""
             except:
                 pass
         
-        # Get weather
         if "weather" in self.agents:
             try:
                 weather = await self.agents["weather"].get_current_weather()

@@ -1,39 +1,25 @@
-# ======================================
-# FASTAPI + SERVER
-# ======================================
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
-python-dotenv==1.0.0
-fastapi-cors==0.0.6
+# FastAPI and server
+fastapi==0.115.5
+uvicorn[standard]==0.34.0
+python-dotenv==1.0.1
+pydantic==2.10.3
 
-# ======================================
-# PYDANTIC
-# ======================================
-pydantic==2.5.0
+# Google APIs
+google-generativeai==0.8.3
+google-auth==2.37.0
+google-auth-oauthlib==1.2.1
+google-auth-httplib2==0.2.0
+google-api-python-client==2.154.0
 
-# ======================================
-# GOOGLE AI (Gemini)
-# ======================================
-google-generativeai==0.3.1
+# Notion
+notion-client==2.2.1
 
-# ======================================
-# GOOGLE APIS (Calendar, Gmail)
-# ======================================
-google-auth==2.23.4
-google-auth-oauthlib==1.1.0
-google-auth-httplib2==0.1.1
-google-api-python-client==2.108.0
+# AI/ML
+groq==0.13.0
 
-# ======================================
-# GROQ (LLM API)
-# ======================================
-groq==0.5.0
+# Utilities
+requests==2.32.3
+pytz==2024.2
 
-# ======================================
-# WEB SCRAPING
-# ======================================
-
-# ======================================
-# SELENIUM (Optional - for automation tasks)
-# ======================================
-
+# ASGI server
+python-multipart==0.0.17
