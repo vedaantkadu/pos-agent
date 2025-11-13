@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, Calendar, CheckSquare, Mail, Cloud, Trophy, TrendingUp, User, Menu, X, MessageSquare, Search, ExternalLink, Inbox, Bell, ChevronLeft, ChevronRight, Settings, LogOut, AlertCircle, Check, Users, FileText, Focus, Lock, Eye, EyeOff, Mic, MicOff, Loader, Sparkles, Bot, Trash2 } from 'lucide-react';
 
-const API_URL = 'http://localhost:8000';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 // Add encoding fix function
 const fixEncoding = (text) => {
